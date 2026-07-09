@@ -1,0 +1,457 @@
+{% extends 'layout.html' %}
+
+{% block title %}Compliance Screener | Aura Decisioning{% endblock %}
+
+{% block content %}
+<div class="row g-4 animate-fade-in">
+    <!-- Top Left/Full Section: Drag-and-Drop Batch Processing -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="panel-icon">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-0">Batch Screening Engine</h4>
+                    <small class="text-secondary">Upload historical applicant data for bulk audit run</small>
+                </div>
+            </div>
+
+            <!-- Upload Area -->
+            <div id="drop-zone" class="text-center p-5">
+                <i class="bi bi-file-earmark-arrow-up text-cyan display-5 mb-3 d-block glow-cyan"></i>
+                <h5 class="fw-bold text-dark">Drag & Drop CSV File</h5>
+                <p class="text-secondary small mb-3">or click to browse your directories</p>
+                <input type="file" id="csv-file-input" accept=".csv" class="d-none">
+                <span class="badge bg-secondary bg-opacity-30 text-secondary border border-secondary border-opacity-30 py-2 px-3" style="font-size: 0.75rem;">CSV format required</span>
+            </div>
+
+            <!-- File Selected Status -->
+            <div id="file-info-pane" class="d-none mt-4 p-3 rounded-3 bg-light border border-secondary border-opacity-40 align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-file-earmark-text text-cyan fs-2"></i>
+                    <div>
+                        <div id="file-name" class="fw-bold text-dark small">applicant_list.csv</div>
+                        <div id="file-size" class="text-secondary small">12.4 KB</div>
+                    </div>
+                </div>
+                <button id="remove-file-btn" class="btn btn-sm btn-outline-danger border-danger"><i class="bi bi-trash"></i></button>
+            </div>
+
+            <!-- Action Button and Help -->
+            <div class="mt-4">
+                <button id="batch-submit-btn" class="btn btn-glow w-100 py-3 d-none">
+                    <i class="bi bi-play-circle-fill me-2"></i> Run Batch Screen Analysis
+                </button>
+                
+                <div class="mt-4 p-3 rounded-3 bg-light border border-secondary border-opacity-35">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="fw-bold text-dark"><i class="bi bi-info-circle text-cyan me-1"></i>Required CSV Columns</small>
+                        <button id="download-template-btn" class="btn btn-sm btn-link text-cyan text-decoration-none p-0 small" style="font-size: 0.75rem; font-weight: 700;">
+                            <i class="bi bi-download me-1"></i>Download Template
+                        </button>
+                    </div>
+                    <code class="text-secondary small d-block overflow-x-auto pb-1" style="font-family: monospace; white-space: nowrap; font-size: 0.8rem;">
+                        Age,Annual_Income,CIBIL_Score,Debt,Years_Employed,Prior_Default
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Right: Batch Processing Outputs -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100 d-flex flex-column">
+            <h4 class="fw-bold mb-4 d-flex align-items-center gap-2">
+                <i class="bi bi-bar-chart-line text-cyan"></i>
+                <span>Batch Screening Results</span>
+            </h4>
+            
+            <!-- Default placeholder -->
+            <div id="batch-placeholder" class="text-center my-auto py-5">
+                <i class="bi bi-clipboard-data text-secondary display-1 opacity-20 d-block mb-3"></i>
+                <h5 class="mt-3 text-dark">Awaiting Batch Input</h5>
+                <p class="text-secondary small mx-auto" style="max-width: 320px;">Upload a compliance CSV file and run risk predictions to populate the audit metrics dashboard.</p>
+            </div>
+
+            <!-- Active Output Stats -->
+            <div id="batch-stats-pane" class="d-none animate-fade-in my-auto">
+                <div class="row g-3 mb-4">
+                    <div class="col-4">
+                        <div class="metric-box">
+                            <i class="bi bi-stack metric-icon"></i>
+                            <div id="stat-total" class="metric-value">0</div>
+                            <div class="metric-label">Checked</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-box">
+                            <i class="bi bi-check-circle metric-icon"></i>
+                            <div id="stat-approved" class="metric-value" style="background: none; -webkit-text-fill-color: var(--accent-emerald); color: var(--accent-emerald);">0</div>
+                            <div class="metric-label">Approved</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-box">
+                            <i class="bi bi-x-octagon metric-icon"></i>
+                            <div id="stat-highrisk" class="metric-value" style="background: none; -webkit-text-fill-color: var(--accent-rose); color: var(--accent-rose);">0</div>
+                            <div class="metric-label">Rejected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-secondary border-secondary border-opacity-30 bg-light text-secondary p-3 rounded-3 mb-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-dark fw-bold"><i class="bi bi-pie-chart text-cyan me-2"></i>High Risk Ratio</span>
+                        <span id="stat-ratio" class="badge bg-danger px-3 py-1">0%</span>
+                    </div>
+                    <p class="small mb-0 text-secondary" style="font-size: 0.8rem;">High risk flags are compiled via ML classifications. Audited and annotated rows can be downloaded as CSV.</p>
+                </div>
+
+                <button id="download-results-btn" class="btn btn-outline-secondary w-100 py-3 border-secondary text-dark hover-bg-secondary" style="border-radius: 12px;">
+                    <i class="bi bi-cloud-arrow-down-fill me-2"></i> Download Processed Annotated CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom: Compliance Audit Trail Logs -->
+    <div class="col-12">
+        <div class="glass-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="fw-bold mb-0">System Compliance & Decision Log Trail</h4>
+                    <small class="text-secondary">Immutable log of model screenings and analyst overrides (stored locally)</small>
+                </div>
+                <button id="clear-logs-btn" class="btn btn-sm btn-outline-secondary border-secondary text-secondary"><i class="bi bi-trash-fill"></i> Clear Logs</button>
+            </div>
+
+            <!-- Policy Consistency Metrics Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-sm-6">
+                    <div class="bg-light p-3 rounded-3 border border-secondary border-opacity-35 text-center">
+                        <div class="fw-bold text-dark fs-5" id="consistency-total-logs">0</div>
+                        <div class="small text-secondary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">TOTAL SCRUTINIZED</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="bg-light p-3 rounded-3 border border-secondary border-opacity-35 text-center">
+                        <div class="fw-bold text-success fs-5" id="consistency-adherence">100%</div>
+                        <div class="small text-secondary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">POLICY ADHERENCE</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="bg-light p-3 rounded-3 border border-secondary border-opacity-35 text-center">
+                        <div class="fw-bold text-warning fs-5" id="consistency-overrides">0</div>
+                        <div class="small text-secondary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">OVERRIDDEN APPROVALS</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="bg-light p-3 rounded-3 border border-secondary border-opacity-35 text-center">
+                        <div class="fw-bold text-danger fs-5" id="consistency-violations">0</div>
+                        <div class="small text-secondary fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">POLICY VIOLATIONS</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Screening Type</th>
+                            <th>applicant Parameters</th>
+                            <th>Decision Engine</th>
+                            <th>Calculated Risk</th>
+                            <th>Audit Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-log-body">
+                        <!-- Populated from LocalStorage -->
+                        <tr id="no-logs-row">
+                            <td colspan="6" class="text-center text-secondary py-4">No audit log records stored yet. Run pre-screenings to generate records.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('csv-file-input');
+        const fileInfoPane = document.getElementById('file-info-pane');
+        const fileNameEl = document.getElementById('file-name');
+        const fileSizeEl = document.getElementById('file-size');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        const batchSubmitBtn = document.getElementById('batch-submit-btn');
+        
+        const batchPlaceholder = document.getElementById('batch-placeholder');
+        const batchStatsPane = document.getElementById('batch-stats-pane');
+        const statTotal = document.getElementById('stat-total');
+        const statApproved = document.getElementById('stat-approved');
+        const statHighrisk = document.getElementById('stat-highrisk');
+        const statRatio = document.getElementById('stat-ratio');
+        const downloadResultsBtn = document.getElementById('download-results-btn');
+        
+        const auditLogBody = document.getElementById('audit-log-body');
+        const noLogsRow = document.getElementById('no-logs-row');
+        const clearLogsBtn = document.getElementById('clear-logs-btn');
+        const downloadTemplateBtn = document.getElementById('download-template-btn');
+
+        let selectedFile = null;
+        let processedCSVBlob = null;
+
+        renderAuditLogs();
+
+        // Template Download
+        downloadTemplateBtn.addEventListener('click', () => {
+            const csvContent = "Age,Annual_Income,CIBIL_Score,Debt,Years_Employed,Prior_Default\n34,550000,680,24000,4.5,No\n22,250000,520,120000,1.2,Yes\n45,1200000,780,0,12.0,No\n58,350000,610,140000,0.5,No";
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'aura_batch_template.csv');
+            a.click();
+        });
+
+        // Trigger file browser on click
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // File Selection Handlers
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Drag & Drop Handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-cyan');
+            dropZone.style.background = 'rgba(6, 182, 212, 0.05)';
+        });
+
+        const resetDropZoneStyle = () => {
+            dropZone.classList.remove('border-cyan');
+            dropZone.style.background = 'rgba(255, 255, 255, 0.02)';
+        };
+
+        dropZone.addEventListener('dragleave', resetDropZoneStyle);
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            resetDropZoneStyle();
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.endsWith('.csv')) {
+                alert('Invalid file format. Only CSV files are supported.');
+                return;
+            }
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+            
+            dropZone.classList.add('d-none');
+            fileInfoPane.classList.remove('d-none');
+            fileInfoPane.classList.add('d-flex');
+            batchSubmitBtn.classList.remove('d-none');
+        }
+
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedFile = null;
+            processedCSVBlob = null;
+            fileInput.value = '';
+            
+            dropZone.classList.remove('d-none');
+            fileInfoPane.classList.add('d-none');
+            fileInfoPane.classList.remove('d-flex');
+            batchSubmitBtn.classList.add('d-none');
+            
+            batchPlaceholder.classList.remove('d-none');
+            batchStatsPane.classList.add('d-none');
+        });
+
+        // Batch Submit Action
+        batchSubmitBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            batchSubmitBtn.disabled = true;
+            batchSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Analyzing Batch File...';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/predict_batch', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to process file');
+                }
+
+                // Get CSV text output
+                const csvText = await response.text();
+                processedCSVBlob = new Blob([csvText], { type: 'text/csv' });
+
+                parseAndDisplayCSVStats(csvText);
+
+                batchPlaceholder.classList.add('d-none');
+                batchStatsPane.classList.remove('d-none');
+
+                // Log batch action to audit trail
+                logBatchActionToAuditTrail(selectedFile.name);
+
+            } catch (err) {
+                alert(`Error executing batch inference: ${err.message}`);
+            } finally {
+                batchSubmitBtn.disabled = false;
+                batchSubmitBtn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i> Run Batch Screen Analysis';
+            }
+        });
+
+        // Parse CSV Text to calculate stats
+        function parseAndDisplayCSVStats(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            const headers = lines[0].split(',');
+            const approvalStatusIdx = headers.indexOf('Approval_Status');
+            
+            let total = 0;
+            let approved = 0;
+            let rejected = 0;
+ 
+            for (let i = 1; i < lines.length; i++) {
+                const columns = lines[i].split(',');
+                if (columns.length <= approvalStatusIdx) continue;
+                
+                total++;
+                const status = columns[approvalStatusIdx].replace(/"/g, '').trim();
+                if (status === 'Approved') {
+                    approved++;
+                } else {
+                    rejected++;
+                }
+            }
+ 
+            statTotal.textContent = total;
+            statApproved.textContent = approved;
+            statHighrisk.textContent = rejected;
+            
+            const ratio = total > 0 ? ((rejected / total) * 100).toFixed(1) : 0;
+            statRatio.textContent = `${ratio}%`;
+        }
+
+        downloadResultsBtn.addEventListener('click', () => {
+            if (!processedCSVBlob) return;
+            const url = window.URL.createObjectURL(processedCSVBlob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `processed_${selectedFile.name}`);
+            a.click();
+        });
+
+        // Audit Trail Display Logic
+        function renderAuditLogs() {
+            const logs = JSON.parse(localStorage.getItem('aura_audit_logs')) || [];
+            
+            // Central consistency computation
+            let totalScrutinized = 0;
+            let totalOverrides = 0;
+            let totalViolations = 0;
+            
+            logs.forEach(log => {
+                if (log.type && (log.type.startsWith('Customer') || log.type.startsWith('Analyst') || log.type.startsWith('Manual Override'))) {
+                    totalScrutinized++;
+                    if (log.overridden) {
+                        totalOverrides++;
+                    } else if (log.triggered_rules && log.triggered_rules.length > 0 && (log.decision === 'Approved' || log.decision === 'APPROVED')) {
+                        totalViolations++;
+                    }
+                }
+            });
+            
+            const adherenceRate = totalScrutinized > 0 ? (((totalScrutinized - totalViolations) / totalScrutinized) * 100).toFixed(0) : 100;
+            
+            document.getElementById('consistency-total-logs').textContent = totalScrutinized;
+            document.getElementById('consistency-adherence').textContent = `${adherenceRate}%`;
+            document.getElementById('consistency-overrides').textContent = totalOverrides;
+            document.getElementById('consistency-violations').textContent = totalViolations;
+            
+            const adherenceEl = document.getElementById('consistency-adherence');
+            adherenceEl.className = adherenceRate < 100 ? 'fw-bold text-danger fs-5' : 'fw-bold text-success fs-5';
+            
+            const violationsEl = document.getElementById('consistency-violations');
+            violationsEl.className = totalViolations > 0 ? 'fw-bold text-danger fs-5' : 'fw-bold text-success fs-5';
+
+            if (logs.length === 0) {
+                if (noLogsRow) noLogsRow.style.display = 'table-row';
+                const oldRows = auditLogBody.querySelectorAll('.dynamic-log-row');
+                oldRows.forEach(row => row.remove());
+                return;
+            }
+
+            if (noLogsRow) noLogsRow.style.display = 'none';
+            
+            const oldRows = auditLogBody.querySelectorAll('.dynamic-log-row');
+            oldRows.forEach(row => row.remove());
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'dynamic-log-row';
+                
+                const timeString = new Date(log.timestamp).toLocaleString();
+                const badgeClass = (log.decision && log.decision.startsWith('Approved')) ? 'badge-approved' : 'badge-rejected';
+                const riskVal = log.risk_score !== undefined ? `${(log.risk_score * 100).toFixed(1)}%` : 'N/A';
+                
+                tr.innerHTML = `
+                    <td class="text-secondary small" style="font-size: 0.8rem;">${timeString}</td>
+                    <td class="fw-bold text-dark" style="font-size: 0.95rem;">${log.type}</td>
+                    <td class="small text-secondary" style="font-size: 0.8rem;">${log.details}</td>
+                    <td class="small"><code class="text-cyan">${log.model}</code></td>
+                    <td><span class="status-badge ${badgeClass} py-1 px-2" style="font-size: 0.65rem; border-radius: 4px;">${log.decision} (${riskVal})</span></td>
+                    <td><span class="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-30 py-1 px-2" style="font-size: 0.75rem;">${log.status}</span></td>
+                `;
+                auditLogBody.appendChild(tr);
+            });
+        }
+
+        function logBatchActionToAuditTrail(fileName) {
+            try {
+                let logs = JSON.parse(localStorage.getItem('aura_audit_logs')) || [];
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    type: 'Batch Compliance Run',
+                    details: `File: ${fileName}, Items Screened: ${statTotal.textContent}`,
+                    model: 'Logistic Regression (Best Classifier)',
+                    decision: `${statHighrisk.textContent} Flags Labeled`,
+                    risk_score: parseFloat(statRatio.textContent) / 100,
+                    status: 'Compliance Verified'
+                };
+                logs.unshift(logEntry);
+                localStorage.setItem('aura_audit_logs', JSON.stringify(logs));
+                renderAuditLogs();
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        clearLogsBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to permanently clear the audit logs trail?')) {
+                localStorage.removeItem('aura_audit_logs');
+                renderAuditLogs();
+            }
+        });
+    });
+</script>
+{% endblock %}

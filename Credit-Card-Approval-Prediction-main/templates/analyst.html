@@ -1,0 +1,493 @@
+{% extends 'layout.html' %}
+
+{% block title %}Analyst Portal | Aura Decisioning{% endblock %}
+
+{% block content %}
+<div class="row g-4 animate-fade-in">
+    <!-- Left Column: Manual Application Entry -->
+    <div class="col-xl-5 col-lg-6">
+        <div class="glass-card h-100">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="panel-icon">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-0">Underwriter Panel</h4>
+                    <small class="text-secondary">Input applicant credit parameters</small>
+                </div>
+            </div>
+            
+            <form id="analyst-form" novalidate>
+                <div class="mb-3">
+                    <label for="applicant_name" class="form-label">Applicant Reference ID / Name</label>
+                    <input type="text" class="form-control" id="applicant_name" placeholder="e.g., APP_9281 or John Doe" required>
+                    <div class="invalid-feedback">Please enter a valid reference identifier.</div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label for="age" class="form-label">Age</label>
+                        <input type="number" class="form-control" id="age" min="18" max="100" placeholder="Years" required>
+                        <div class="invalid-feedback">Age must be 18+.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="cibil_score" class="form-label">CIBIL Rating</label>
+                        <input type="number" class="form-control" id="cibil_score" min="300" max="900" placeholder="300 - 900" required>
+                        <div class="invalid-feedback">CIBIL must be 300-900.</div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label for="annual_income" class="form-label">Annual Income (INR)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" class="form-control" id="annual_income" min="10000" placeholder="Income" required>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="debt" class="form-label">Outstanding Debt (INR)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" class="form-control" id="debt" min="0" placeholder="Debt" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6">
+                        <label for="years_employed" class="form-label">Employment (Years)</label>
+                        <input type="number" class="form-control" id="years_employed" min="0" max="50" step="0.5" placeholder="Years" required>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="prior_default" class="form-label">Prior Default History</label>
+                        <select class="form-select" id="prior_default" required>
+                            <option value="" disabled selected>Select</option>
+                            <option value="No">No - Clean Record</option>
+                            <option value="Yes">Yes - Prior default</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="analyst-submit-btn" class="btn btn-glow w-100 py-3">
+                    <i class="bi bi-activity me-2"></i> Execute Risk Inference
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Decision Engine Workspace -->
+    <div class="col-xl-7 col-lg-6">
+        <div class="glass-card h-100 d-flex flex-column">
+            <h4 class="fw-bold mb-4 d-flex align-items-center gap-2">
+                <i class="bi bi-graph-up-arrow text-cyan"></i>
+                <span>Underwriting Workspace</span>
+            </h4>
+            
+            <!-- Default placeholder when no analysis has run -->
+            <div id="workspace-placeholder" class="text-center my-auto py-5">
+                <i class="bi bi-clipboard-data text-secondary display-1 opacity-20 d-block mb-3"></i>
+                <h5 class="mt-3 text-dark">Awaiting Input Profile</h5>
+                <p class="text-secondary small mx-auto" style="max-width: 320px;">Submit the manual entry portfolio parameters on the left to initiate the automated ML scoring workflow.</p>
+            </div>
+
+            <!-- Active Decision Pane -->
+            <div id="workspace-decision" class="d-none animate-fade-in my-auto">
+                <div class="row align-items-center mb-4">
+                    <div class="col-sm-6 text-center text-sm-start mb-3 mb-sm-0">
+                        <span class="text-secondary small d-block mb-1" style="font-size: 0.7rem; letter-spacing: 0.08em; font-weight: 700;">SYSTEM DECISION</span>
+                        <div id="decision-flag" class="status-badge px-4 py-2">
+                            <!-- Labeled Dynamically -->
+                        </div>
+                    </div>
+                    <div class="col-sm-6 text-center text-sm-end">
+                        <div class="position-relative d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;">
+                            <svg class="w-100 h-100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="42" class="gauge-background" stroke="rgba(255,255,255,0.03)" stroke-width="8" fill="none" />
+                                <circle id="gauge-circle" cx="50" cy="50" r="42" stroke="url(#analyst-gradient)" stroke-width="8" fill="none" stroke-dasharray="263.89" stroke-dashoffset="263.89" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease-in-out; transform: rotate(-90deg); transform-origin: 50px 50px;" />
+                                <defs>
+                                    <linearGradient id="analyst-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#06B6D4" />
+                                        <stop offset="100%" stop-color="#1E293B" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="position-absolute text-center">
+                                <div id="risk-prob-text" class="fw-extrabold fs-4 text-dark mb-0" style="font-family: 'Outfit';">0%</div>
+                                <div class="small text-secondary fw-bold" style="font-size: 0.55rem; letter-spacing: 0.05em;">RISK</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-4">
+                        <div class="metric-box">
+                            <i class="bi bi-cash-coin metric-icon"></i>
+                            <div id="metric-dti" class="metric-value">0%</div>
+                            <div class="metric-label">Debt-to-Income</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="metric-box">
+                            <i class="bi bi-speedometer metric-icon"></i>
+                            <div id="metric-score" class="metric-value">300</div>
+                            <div class="metric-label">CIBIL rating</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="metric-box">
+                            <i class="bi bi-briefcase metric-icon"></i>
+                            <div id="metric-emp" class="metric-value">0.0y</div>
+                            <div class="metric-label">Employment</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-light p-4 rounded-3 border border-secondary border-opacity-35 mb-4">
+                    <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-check text-cyan"></i>
+                        <span>Underwriting Rule Assessment</span>
+                    </h6>
+                    <ul class="list-unstyled small text-secondary mb-0" id="rule-triggers-list" style="line-height: 1.8;">
+                        <!-- Rule bullets populated dynamically -->
+                    </ul>
+                </div>
+
+                <!-- Override workflow container (hidden by default) -->
+                <div id="override-panel" class="d-none mt-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-3">
+                    <h6 class="fw-bold text-danger mb-2 d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-exclamation text-rose fs-5"></i>
+                        <span>Authorized Decision Override Panel</span>
+                    </h6>
+                    <p class="small text-secondary mb-3">One or more hard underwriting rules were violated. You are blocked from manually approving this profile unless you authorize a policy override.</p>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="override-checkbox">
+                        <label class="form-check-label fw-bold text-dark small" for="override-checkbox">
+                            Apply Authorized Manual Override
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="override-reason" class="form-label" style="font-size: 0.75rem;">Justification / Override Reason</label>
+                        <input type="text" class="form-control form-control-sm" id="override-reason" placeholder="e.g. Co-signer credit verified">
+                    </div>
+                    <button type="button" id="override-submit-btn" class="btn btn-sm btn-danger w-100 py-2 fw-bold" disabled>
+                        Override Policy & Force Approve
+                    </button>
+                </div>
+
+
+            </div>
+
+            <!-- Internal queue logs of the analyst session -->
+            <div class="mt-auto pt-4 border-top border-secondary border-opacity-30">
+                <h6 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
+                    <span>Session Decision Logs Queue</span>
+                    <span id="session-count" class="badge bg-secondary py-1 px-2 border border-secondary">0</span>
+                </h6>
+                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-custom table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Ref Name/ID</th>
+                                <th>CIBIL</th>
+                                <th>DTI</th>
+                                <th>Score</th>
+                                <th>Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody id="session-log-body">
+                            <!-- Populated dynamically -->
+                            <tr id="empty-session-row">
+                                <td colspan="5" class="text-center text-secondary py-3 small">No assessments processed in this session.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('analyst-form');
+        const submitBtn = document.getElementById('analyst-submit-btn');
+        const placeholder = document.getElementById('workspace-placeholder');
+        const decisionPane = document.getElementById('workspace-decision');
+        
+        // Output elements
+        const decisionFlag = document.getElementById('decision-flag');
+        const gaugeCircle = document.getElementById('gauge-circle');
+        const riskProbText = document.getElementById('risk-prob-text');
+        
+        const metricDti = document.getElementById('metric-dti');
+        const metricScore = document.getElementById('metric-score');
+        const metricEmp = document.getElementById('metric-emp');
+        const ruleList = document.getElementById('rule-triggers-list');
+
+        // Override controls
+        const overridePanel = document.getElementById('override-panel');
+        const overrideCheckbox = document.getElementById('override-checkbox');
+        const overrideReason = document.getElementById('override-reason');
+        const overrideSubmitBtn = document.getElementById('override-submit-btn');
+        
+        // Log queues
+        const logBody = document.getElementById('session-log-body');
+        const sessionCount = document.getElementById('session-count');
+        const emptyRow = document.getElementById('empty-session-row');
+        
+        let sessionLogs = [];
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Evaluating Portfolio...';
+
+            const refName = document.getElementById('applicant_name').value;
+            const payload = {
+                Age: parseFloat(document.getElementById('age').value),
+                Annual_Income: parseFloat(document.getElementById('annual_income').value),
+                CIBIL_Score: parseInt(document.getElementById('cibil_score').value),
+                Debt: parseFloat(document.getElementById('debt').value),
+                Years_Employed: parseFloat(document.getElementById('years_employed').value),
+                Prior_Default: document.getElementById('prior_default').value
+            };
+
+            try {
+                const response = await fetch('/predict_single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+
+                // Reset override controls
+                overridePanel.classList.add('d-none');
+                overrideCheckbox.checked = false;
+                overrideReason.value = '';
+                overrideSubmitBtn.disabled = true;
+
+                // Show Workspace Pane
+                placeholder.classList.add('d-none');
+                decisionPane.classList.remove('d-none');
+
+                // Animate SVG Gauge (circumference 263.89)
+                const circumference = 263.89;
+                const offset = circumference - (circumference * data.risk_score);
+                setTimeout(() => {
+                    gaugeCircle.style.strokeDashoffset = offset.toFixed(2);
+                }, 50);
+
+                // Bind outputs
+                const defaultRisk = (data.risk_score * 100).toFixed(1);
+                riskProbText.textContent = `${(data.risk_score * 100).toFixed(0)}%`;
+                
+                // Calculate metrics
+                const dti = ((payload.Debt / payload.Annual_Income) * 100).toFixed(1);
+                metricDti.textContent = `${dti}%`;
+                metricScore.textContent = payload.CIBIL_Score;
+                metricEmp.textContent = `${payload.Years_Employed}y`;
+
+                decisionFlag.className = 'status-badge px-4 py-2';
+                if (data.approval_status === 'Approved') {
+                    decisionFlag.classList.add('badge-approved');
+                    decisionFlag.innerHTML = '<i class="bi bi-check-circle-fill fs-5"></i> APPROVED';
+                } else {
+                    decisionFlag.classList.add('badge-rejected');
+                    decisionFlag.innerHTML = '<i class="bi bi-x-circle-fill fs-5"></i> REJECTED';
+                    
+                    // Show override panel if rule triggers exist
+                    if (data.triggered_rules && data.triggered_rules.length > 0) {
+                        overridePanel.classList.remove('d-none');
+                    }
+                }
+
+                addSessionLog(refName, payload.CIBIL_Score, dti, defaultRisk, data.approval_status);
+                syncWithComplianceStorage(refName, payload, data);
+
+                // Dynamic rule triggers
+                ruleList.innerHTML = '';
+                
+                // 1. Rejection Checks
+                if (payload.CIBIL_Score < 550) {
+                    ruleList.innerHTML += `<li class="text-danger d-flex align-items-center gap-2"><i class="bi bi-x-circle-fill text-rose"></i> <span><strong>Rejection Rule:</strong> CIBIL score is below policy limit (${payload.CIBIL_Score} < 550)</span></li>`;
+                }
+                if (payload.Prior_Default === 'Yes') {
+                    ruleList.innerHTML += `<li class="text-danger d-flex align-items-center gap-2"><i class="bi bi-x-circle-fill text-rose"></i> <span><strong>Rejection Rule:</strong> Active prior default on file</span></li>`;
+                }
+                if (payload.Age < 18) {
+                    ruleList.innerHTML += `<li class="text-danger d-flex align-items-center gap-2"><i class="bi bi-x-circle-fill text-rose"></i> <span><strong>Rejection Rule:</strong> Underage applicant (${payload.Age} < 18)</span></li>`;
+                }
+                if (dti > 60) {
+                    ruleList.innerHTML += `<li class="text-danger d-flex align-items-center gap-2"><i class="bi bi-x-circle-fill text-rose"></i> <span><strong>Rejection Rule:</strong> DTI ratio exceeds absolute limit (${dti}% > 60%)</span></li>`;
+                }
+                if (payload.Annual_Income < 60000) {
+                    ruleList.innerHTML += `<li class="text-danger d-flex align-items-center gap-2"><i class="bi bi-x-circle-fill text-rose"></i> <span><strong>Rejection Rule:</strong> Annual Income below limit (₹${payload.Annual_Income.toLocaleString('en-IN')} < ₹60,000)</span></li>`;
+                }
+
+                // 2. Review Checks
+                if (payload.CIBIL_Score >= 550 && payload.CIBIL_Score < 650) {
+                    ruleList.innerHTML += `<li class="text-warning d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill text-warning"></i> <span><strong>Review Rule:</strong> CIBIL score in sub-prime review zone (${payload.CIBIL_Score})</span></li>`;
+                }
+                if (dti >= 45 && dti <= 60) {
+                    ruleList.innerHTML += `<li class="text-warning d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill text-warning"></i> <span><strong>Review Rule:</strong> DTI ratio in elevated review zone (${dti}%)</span></li>`;
+                }
+                if (payload.Years_Employed < 1) {
+                    ruleList.innerHTML += `<li class="text-warning d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill text-warning"></i> <span><strong>Review Rule:</strong> Employment history is less than 1 year (${payload.Years_Employed}y)</span></li>`;
+                }
+                if (payload.Age >= 18 && payload.Age <= 21) {
+                    ruleList.innerHTML += `<li class="text-warning d-flex align-items-center gap-2"><i class="bi bi-exclamation-triangle-fill text-warning"></i> <span><strong>Review Rule:</strong> Young applicant in review zone (${payload.Age}y)</span></li>`;
+                }
+
+                // 3. Fail Approval Checks (if not approved and no rules above triggered)
+                if (data.approval_reasons_failed && data.approval_reasons_failed.length > 0 && data.triggered_rules.length === 0) {
+                    data.approval_reasons_failed.forEach(reason => {
+                        ruleList.innerHTML += `<li class="text-secondary d-flex align-items-center gap-2"><i class="bi bi-info-circle text-cyan"></i> <span><strong>Unsatisfied Requirement:</strong> ${reason}</span></li>`;
+                    });
+                }
+
+                if (ruleList.innerHTML === '') {
+                    ruleList.innerHTML = `<li class="text-success d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-emerald"></i> <span><strong>Pass:</strong> All approval requirements met successfully</span></li>`;
+                }
+
+
+
+            } catch (err) {
+                alert(`Analysis Failed: ${err.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-cpu-fill me-2"></i> Execute Risk Inference';
+            }
+        });
+
+        function addSessionLog(name, fico, dti, riskScore, recommendation) {
+            if (emptyRow && emptyRow.parentNode) emptyRow.remove();
+            
+            const badgeClass = recommendation === 'Approved' ? 'badge-approved' : 'badge-rejected';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="fw-bold">${name}</td>
+                <td>${fico}</td>
+                <td>${dti}%</td>
+                <td>${riskScore}%</td>
+                <td><span class="status-badge ${badgeClass} py-1 px-2" style="font-size: 0.65rem; border-radius: 4px;">${recommendation}</span></td>
+            `;
+            
+            logBody.insertBefore(row, logBody.firstChild);
+            sessionLogs.push({ name, fico, dti, riskScore, recommendation });
+            sessionCount.textContent = sessionLogs.length;
+        }
+
+        // Handle override inputs change
+        function toggleOverrideButton() {
+            overrideSubmitBtn.disabled = !(overrideCheckbox.checked && overrideReason.value.trim().length > 0);
+        }
+        overrideCheckbox.addEventListener('change', toggleOverrideButton);
+        overrideReason.addEventListener('input', toggleOverrideButton);
+        
+        overrideSubmitBtn.addEventListener('click', async () => {
+            const refName = document.getElementById('applicant_name').value;
+            const payload = {
+                Age: parseFloat(document.getElementById('age').value),
+                Annual_Income: parseFloat(document.getElementById('annual_income').value),
+                CIBIL_Score: parseInt(document.getElementById('cibil_score').value),
+                Debt: parseFloat(document.getElementById('debt').value),
+                Years_Employed: parseFloat(document.getElementById('years_employed').value),
+                Prior_Default: document.getElementById('prior_default').value,
+                override: true
+            };
+            
+            overrideSubmitBtn.disabled = true;
+            overrideSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Applying Override...';
+            
+            try {
+                const response = await fetch('/predict_single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                
+                // Hide override panel and show workspace placeholder or updated badge
+                overridePanel.classList.add('d-none');
+                
+                decisionFlag.className = 'status-badge badge-approved fs-5 px-4 py-2';
+                decisionFlag.innerHTML = '<i class="bi bi-shield-fill-check fs-5 me-2"></i> APPROVED (OVERRIDDEN)';
+                
+                const defaultRisk = (data.risk_score * 100).toFixed(1);
+                const dti = ((payload.Debt / payload.Annual_Income) * 100).toFixed(1);
+                
+                addSessionLog(refName, payload.CIBIL_Score, dti, defaultRisk, 'Approved (Overridden)');
+                syncOverrideWithComplianceStorage(refName, payload, data, overrideReason.value.trim());
+                
+            } catch (err) {
+                alert(`Override execution failed: ${err.message}`);
+            } finally {
+                overrideSubmitBtn.disabled = false;
+                overrideSubmitBtn.innerHTML = 'Override Policy & Force Approve';
+            }
+        });
+
+
+
+        function syncOverrideWithComplianceStorage(name, input, result, reason) {
+            try {
+                let logs = JSON.parse(localStorage.getItem('aura_audit_logs')) || [];
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    type: `Manual Override (${name})`,
+                    details: `CIBIL: ${input.CIBIL_Score}, Debt: ₹${input.Debt.toLocaleString('en-IN')}, Income: ₹${input.Annual_Income.toLocaleString('en-IN')}. Justification: ${reason}`,
+                    model: 'Logistic Regression (Best Classifier)',
+                    decision: 'Approved (Overridden)',
+                    risk_score: result.risk_score,
+                    status: 'Manual Override Logged',
+                    triggered_rules: result.triggered_rules || [],
+                    rejection_reasons: result.rejection_reasons || [],
+                    overridden: true,
+                    override_reason: reason
+                };
+                logs.unshift(logEntry);
+                localStorage.setItem('aura_audit_logs', JSON.stringify(logs));
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        function syncWithComplianceStorage(name, input, result) {
+            try {
+                let logs = JSON.parse(localStorage.getItem('aura_audit_logs')) || [];
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    type: `Analyst Entry (${name})`,
+                    details: `CIBIL: ${input.CIBIL_Score}, Debt: ₹${input.Debt.toLocaleString('en-IN')}, Income: ₹${input.Annual_Income.toLocaleString('en-IN')}`,
+                    model: 'Logistic Regression (Best Classifier)',
+                    decision: result.approval_status,
+                    risk_score: result.risk_score,
+                    status: 'Manual Audit Pending',
+                    triggered_rules: result.triggered_rules || [],
+                    rejection_reasons: result.rejection_reasons || [],
+                    overridden: result.overridden || false
+                };
+                logs.unshift(logEntry);
+                localStorage.setItem('aura_audit_logs', JSON.stringify(logs));
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+    });
+</script>
+{% endblock %}

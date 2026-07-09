@@ -1,0 +1,6 @@
+flask
+xgboost
+scikit-learn
+pandas
+ibm-watson-machine-learning
+numpy

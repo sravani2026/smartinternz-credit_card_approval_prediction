@@ -1,0 +1,328 @@
+{% extends 'layout.html' %}
+
+{% block title %}Apply for Credit | Aura Decisioning{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center animate-fade-in">
+    <div class="col-lg-8">
+        <div class="glass-card">
+            <!-- Header section -->
+            <div class="text-center mb-5">
+                <div class="panel-icon mx-auto mb-3">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h2 class="fw-extrabold display-6">Credit Pre-Screening Portal</h2>
+                <p class="text-secondary small mx-auto" style="max-width: 520px;">Provide your key financial and demographic details to perform an instant automated credit card screening leveraging our machine learning risk models.</p>
+            </div>
+
+            <!-- Form Screen -->
+            <form id="screening-form" novalidate>
+                <div class="row g-4">
+                    <!-- Column 1 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="age" class="form-label">Age (Years)</label>
+                            <input type="number" class="form-control" id="age" name="Age" min="18" max="100" placeholder="e.g., 34" required>
+                            <div class="invalid-feedback">Please enter a valid age between 18 and 100.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="annual_income" class="form-label">Annual Income (INR)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="annual_income" name="Annual_Income" min="10000" placeholder="e.g., 600000 (6 LPA)" required>
+                                <div class="invalid-feedback">Please enter a valid annual income.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="cibil_score" class="form-label">CIBIL Score</label>
+                            <input type="number" class="form-control" id="cibil_score" name="CIBIL_Score" min="300" max="900" placeholder="300 - 900" required>
+                            <div class="invalid-feedback">Please enter a valid CIBIL credit score (300 to 900).</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="debt" class="form-label">Total Outstanding Debt (INR)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="debt" name="Debt" min="0" placeholder="e.g., 50000" required>
+                                <div class="invalid-feedback">Please enter your total current debt.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 3 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="years_employed" class="form-label">Years of Professional Employment</label>
+                            <input type="number" class="form-control" id="years_employed" name="Years_Employed" min="0" max="50" step="0.5" placeholder="e.g., 5.5" required>
+                            <div class="invalid-feedback">Please enter your years of employment.</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="prior_default" class="form-label">Prior Financial Default History</label>
+                            <select class="form-select" id="prior_default" name="Prior_Default" required>
+                                <option value="" disabled selected>Select option</option>
+                                <option value="No">No - No history of default</option>
+                                <option value="Yes">Yes - Have defaulted previously</option>
+                            </select>
+                            <div class="invalid-feedback">Please select default history.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-5 text-center">
+                    <button type="submit" id="submit-btn" class="btn btn-glow w-100 py-3">
+                        <i class="bi bi-shield-lock me-2"></i>
+                        <span id="btn-text">Run Security Assessment</span>
+                        <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Result Screen (Hidden by Default) -->
+            <div id="result-section" class="d-none mt-5 p-5 rounded-4 border animate-fade-in">
+                <div class="row align-items-center">
+                    <!-- Left: Circular Gauge -->
+                    <div class="col-md-5 text-center mb-4 mb-md-0">
+                        <div class="position-relative d-inline-flex align-items-center justify-content-center" style="width: 180px; height: 180px;">
+                            <svg class="w-100 h-100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="42" class="gauge-background" stroke="rgba(255,255,255,0.03)" stroke-width="7" fill="none" />
+                                <circle id="gauge-circle" cx="50" cy="50" r="42" stroke="url(#risk-gradient)" stroke-width="7" fill="none" stroke-dasharray="263.89" stroke-dashoffset="263.89" stroke-linecap="round" style="transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1); transform: rotate(-90deg); transform-origin: 50px 50px;" />
+                                <defs>
+                                    <linearGradient id="risk-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#06B6D4" />
+                                        <stop offset="50%" stop-color="#1E293B" />
+                                        <stop offset="100%" stop-color="#F59E0B" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="position-absolute text-center">
+                                <div id="risk-score-percent" class="fw-extrabold display-6 text-dark mb-0" style="font-family: 'Outfit';">0%</div>
+                                <div class="small text-secondary fw-bold" style="font-size: 0.65rem; letter-spacing: 0.05em;">DEFAULT RISK</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Decision Stats -->
+                    <div class="col-md-7">
+                        <div class="mb-3 text-center text-md-start">
+                            <span id="decision-badge" class="status-badge mb-2">
+                                <!-- Populated dynamically -->
+                            </span>
+                        </div>
+                        <h4 class="fw-bold mb-3 text-dark text-center text-md-start">Inference Decision Analysis</h4>
+                        
+                        <!-- Details Grid -->
+                        <div class="p-3 bg-light rounded-3 border border-secondary border-opacity-35 mb-4">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <span class="text-secondary small d-block"><i class="bi bi-clipboard-check me-1"></i>DECISION</span>
+                                    <span id="decision-status" class="fw-bold text-dark fs-5">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-secondary small d-block"><i class="bi bi-shield-lock me-1"></i>RISK LEVEL</span>
+                                    <span id="risk-level-status" class="fw-bold text-dark fs-5">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p id="decision-feedback" class="text-secondary small mb-0"></p>
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-4 border-top border-secondary border-opacity-30 text-center">
+                    <button id="reset-btn" class="btn btn-outline-secondary px-4 py-2 border-secondary text-dark hover-bg-secondary" style="border-radius: 8px;">
+                        <i class="bi bi-arrow-repeat me-1"></i> Screen Another Profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error-banner" class="alert alert-danger d-none mt-4 border-danger border-opacity-50 bg-danger bg-opacity-10 text-danger rounded-3" role="alert">
+                An error occurred during screening. Please check input values and try again.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('screening-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        
+        const resultSection = document.getElementById('result-section');
+        const gaugeCircle = document.getElementById('gauge-circle');
+        const riskPercentText = document.getElementById('risk-score-percent');
+        
+        const decisionBadge = document.getElementById('decision-badge');
+        const decisionStatus = document.getElementById('decision-status');
+        const riskLevelStatus = document.getElementById('risk-level-status');
+        const decisionFeedback = document.getElementById('decision-feedback');
+        
+        const errorBanner = document.getElementById('error-banner');
+        const resetBtn = document.getElementById('reset-btn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBanner.classList.add('d-none');
+            
+            if (!form.checkValidity()) {
+                e.stopPropagation();
+                form.classList.add('was-validated');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            btnText.textContent = 'Processing Security Inference...';
+            btnSpinner.classList.remove('d-none');
+
+            const payload = {
+                Age: parseFloat(document.getElementById('age').value),
+                Annual_Income: parseFloat(document.getElementById('annual_income').value),
+                CIBIL_Score: parseInt(document.getElementById('cibil_score').value),
+                Debt: parseFloat(document.getElementById('debt').value),
+                Years_Employed: parseFloat(document.getElementById('years_employed').value),
+                Prior_Default: document.getElementById('prior_default').value
+            };
+
+            try {
+                const response = await fetch('/predict_single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Server error');
+
+                form.classList.add('d-none');
+                resultSection.classList.remove('d-none');
+                
+                // SVG Gauge animation: radius is 42, circumference is 2 * Math.PI * 42 = 263.89
+                const circumference = 263.89;
+                const offset = circumference - (circumference * data.risk_score);
+                
+                // Trigger gauge animation
+                setTimeout(() => {
+                    gaugeCircle.style.strokeDashoffset = offset.toFixed(2);
+                }, 50);
+                
+                // Count up risk percent text
+                animateValue(riskPercentText, 0, Math.round(data.risk_score * 100), 1000);
+                
+                // Setup results
+                decisionBadge.className = 'status-badge';
+                const scorePercentage = (data.risk_score * 100).toFixed(1);
+                
+                // Reset classes
+                decisionBadge.className = 'status-badge';
+                
+                if (data.approval_status === 'Approved') {
+                    decisionBadge.classList.add('badge-approved');
+                    decisionBadge.innerHTML = '<i class="bi bi-patch-check-fill fs-5"></i> Pre-Approved';
+                    decisionStatus.textContent = 'APPROVED';
+                    decisionStatus.className = 'fw-bold text-success fs-5';
+                    riskLevelStatus.textContent = 'LOW RISK';
+                    riskLevelStatus.className = 'fw-bold text-success fs-5';
+                    
+                    resultSection.className = 'result-success mt-5 p-5 rounded-4 border animate-fade-in';
+                    decisionFeedback.innerHTML = `Congratulations! Our credit risk engine evaluated your profile and generated a <strong>Low Risk</strong> index profile (calculated default risk: <strong>${scorePercentage}%</strong>). Your income level, employment background, and clean prior credit history support an immediate pre-approval rating.`;
+                } else {
+                    decisionBadge.classList.add('badge-rejected');
+                    decisionBadge.innerHTML = '<i class="bi bi-shield-slash-fill fs-5"></i> Rejected';
+                    decisionStatus.textContent = 'REJECTED';
+                    decisionStatus.className = 'fw-bold text-danger fs-5';
+                    riskLevelStatus.textContent = 'HIGH RISK';
+                    riskLevelStatus.className = 'fw-bold text-danger fs-5';
+                    
+                    resultSection.className = 'result-danger mt-5 p-5 rounded-4 border animate-fade-in';
+                    
+                    let feedbackHtml = `Our credit risk engine has declined this application (default risk: <strong>${scorePercentage}%</strong>). Policy rules were violated during automated pre-screening:`;
+                    if (data.rejection_reasons && data.rejection_reasons.length > 0) {
+                        feedbackHtml += `<ul class="mt-2 mb-0 ps-3">`;
+                        data.rejection_reasons.forEach(reason => {
+                            feedbackHtml += `<li><strong>${reason}</strong></li>`;
+                        });
+                        feedbackHtml += `</ul>`;
+                    } else {
+                        feedbackHtml += ` Underwriting limits were exceeded due to model risk factors.`;
+                    }
+                    decisionFeedback.innerHTML = feedbackHtml;
+                }
+
+                saveSubmissionToAuditLogs(payload, data);
+
+            } catch (err) {
+                console.error(err);
+                errorBanner.textContent = `Inference Failed: ${err.message}`;
+                errorBanner.classList.remove('d-none');
+            } finally {
+                submitBtn.disabled = false;
+                btnText.textContent = 'Run Security Assessment';
+                btnSpinner.classList.add('d-none');
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            form.reset();
+            form.classList.remove('was-validated');
+            form.classList.remove('d-none');
+            resultSection.classList.add('d-none');
+            errorBanner.classList.add('d-none');
+            gaugeCircle.style.strokeDashoffset = 263.89;
+            riskPercentText.textContent = '0%';
+        });
+
+        // Numeric text count-up animation helper
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start) + "%";
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function saveSubmissionToAuditLogs(input, result) {
+            try {
+                let logs = JSON.parse(localStorage.getItem('aura_audit_logs')) || [];
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    type: 'Customer Self-Screening',
+                    details: `CIBIL: ${input.CIBIL_Score}, Debt: ₹${input.Debt.toLocaleString('en-IN')}, Income: ₹${input.Annual_Income.toLocaleString('en-IN')}`,
+                    model: 'Logistic Regression (Best Classifier)',
+                    decision: result.approval_status,
+                    risk_score: result.risk_score,
+                    status: 'Verified Audit Log',
+                    triggered_rules: result.triggered_rules || [],
+                    rejection_reasons: result.rejection_reasons || [],
+                    overridden: result.overridden || false
+                };
+                logs.unshift(logEntry);
+                localStorage.setItem('aura_audit_logs', JSON.stringify(logs));
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+    });
+</script>
+{% endblock %}
